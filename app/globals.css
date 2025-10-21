@@ -1,0 +1,19 @@
+html, body {
+  padding: 0;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', Arial, sans-serif;
+  color: #111;
+}
+
+.label {
+  color: #666;
+}
+
+input {
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+
