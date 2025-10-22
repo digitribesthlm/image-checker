@@ -42,6 +42,7 @@ export default function ImageInspector() {
     try {
       const m = await extractMetadata(f);
       setMetadata(m);
+      // SOLUTION: Pre-populate with existing EXIF data from the image
       setExifMake(m.make || '');
       setExifModel(m.model || '');
       setExifSoftware(m.software || '');
@@ -216,39 +217,80 @@ export default function ImageInspector() {
                 {metadata.format && (
                   <>
                     <div className="label">Make</div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <select value={exifMake} onChange={(e) => setExifMake(e.target.value)} style={{ flex: 1, padding: '8px 10px', border: '1px solid #ccc', borderRadius: 6 }}>
-                        <option value="">-- Select Brand --</option>
-                        <option value="Apple">Apple</option>
-                        <option value="Canon">Canon</option>
-                        <option value="Nikon">Nikon</option>
-                        <option value="Sony">Sony</option>
-                        <option value="Samsung">Samsung</option>
-                        <option value="Google">Google (Pixel)</option>
-                        <option value="Fujifilm">Fujifilm</option>
-                        <option value="Panasonic">Panasonic</option>
-                      </select>
-                      <input value={exifMake} onChange={(e) => setExifMake(e.target.value)} placeholder="or custom" style={{ flex: 1 }} />
+                    <div>
+                      {/* SOLUTION: Show original value if exists, with optional dropdown for quick selection */}
+                      <input 
+                        value={exifMake} 
+                        onChange={(e) => setExifMake(e.target.value)} 
+                        placeholder="Camera brand" 
+                        style={{ width: '100%', padding: '8px 10px', border: '1px solid #ccc', borderRadius: 6 }}
+                        list="make-suggestions"
+                      />
+                      <datalist id="make-suggestions">
+                        <option value="Apple" />
+                        <option value="Canon" />
+                        <option value="Nikon" />
+                        <option value="Sony" />
+                        <option value="Samsung" />
+                        <option value="Google" />
+                        <option value="Fujifilm" />
+                        <option value="Panasonic" />
+                        <option value="Olympus" />
+                        <option value="Leica" />
+                        <option value="Pentax" />
+                        <option value="Hasselblad" />
+                      </datalist>
                     </div>
                     <div className="label">Model</div>
-                    <div><input value={exifModel} onChange={(e) => setExifModel(e.target.value)} placeholder={metadata.model || 'Camera model'} style={{ width: '100%' }} /></div>
+                    <div>
+                      <input 
+                        value={exifModel} 
+                        onChange={(e) => setExifModel(e.target.value)} 
+                        placeholder="Camera model" 
+                        style={{ width: '100%', padding: '8px 10px', border: '1px solid #ccc', borderRadius: 6 }} 
+                      />
+                    </div>
                     <div className="label">Software</div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <select value={exifSoftware} onChange={(e) => setExifSoftware(e.target.value)} style={{ flex: 1, padding: '8px 10px', border: '1px solid #ccc', borderRadius: 6 }}>
-                        <option value="">-- Select Software --</option>
-                        <option value="Adobe Lightroom">Adobe Lightroom</option>
-                        <option value="Photoshop">Photoshop</option>
-                        <option value="GIMP">GIMP</option>
-                        <option value="Capture One">Capture One</option>
-                        <option value="Affinity Photo">Affinity Photo</option>
-                        <option value="Darktable">Darktable</option>
-                      </select>
-                      <input value={exifSoftware} onChange={(e) => setExifSoftware(e.target.value)} placeholder="or custom" style={{ flex: 1 }} />
+                    <div>
+                      {/* SOLUTION: Show original value if exists, with optional dropdown for quick selection */}
+                      <input 
+                        value={exifSoftware} 
+                        onChange={(e) => setExifSoftware(e.target.value)} 
+                        placeholder="Editing software" 
+                        style={{ width: '100%', padding: '8px 10px', border: '1px solid #ccc', borderRadius: 6 }}
+                        list="software-suggestions"
+                      />
+                      <datalist id="software-suggestions">
+                        <option value="Adobe Lightroom" />
+                        <option value="Adobe Photoshop" />
+                        <option value="GIMP" />
+                        <option value="Capture One" />
+                        <option value="Affinity Photo" />
+                        <option value="Darktable" />
+                        <option value="Luminar" />
+                        <option value="ON1 Photo RAW" />
+                      </datalist>
                     </div>
                     <div className="label">GPS latitude</div>
-                    <div><input value={exifLat} onChange={(e) => setExifLat(e.target.value)} inputMode="decimal" placeholder={metadata.gpsLatitude != null ? String(metadata.gpsLatitude) : 'e.g. 59.3293'} style={{ width: 180 }} /></div>
+                    <div>
+                      <input 
+                        value={exifLat} 
+                        onChange={(e) => setExifLat(e.target.value)} 
+                        inputMode="decimal" 
+                        placeholder="e.g. 59.3293" 
+                        style={{ width: '100%', padding: '8px 10px', border: '1px solid #ccc', borderRadius: 6 }} 
+                      />
+                    </div>
                     <div className="label">GPS longitude</div>
-                    <div><input value={exifLon} onChange={(e) => setExifLon(e.target.value)} inputMode="decimal" placeholder={metadata.gpsLongitude != null ? String(metadata.gpsLongitude) : 'e.g. 18.0686'} style={{ width: 180 }} /></div>
+                    <div>
+                      <input 
+                        value={exifLon} 
+                        onChange={(e) => setExifLon(e.target.value)} 
+                        inputMode="decimal" 
+                        placeholder="e.g. 18.0686" 
+                        style={{ width: '100%', padding: '8px 10px', border: '1px solid #ccc', borderRadius: 6 }} 
+                      />
+                    </div>
                   </>
                 )}
               </div>
@@ -265,60 +307,41 @@ export default function ImageInspector() {
                   value={desiredWidthCm}
                   onChange={(e) => setDesiredWidthCm(e.target.value)}
                   inputMode="decimal"
-                  style={{ width: 90 }}
+                  placeholder="Width"
+                  style={{ flex: 1 }}
                 />
-                <span>×</span>
+                <span style={{ alignSelf: 'center' }}>×</span>
                 <input
                   value={desiredHeightCm}
                   onChange={(e) => setDesiredHeightCm(e.target.value)}
                   inputMode="decimal"
-                  style={{ width: 90 }}
+                  placeholder="Height"
+                  style={{ flex: 1 }}
                 />
               </div>
-
               <div className="label">Desired DPI</div>
               <div>
                 <input
                   value={desiredDpi}
-                  onChange={(e) => setDesiredDpi(e.target.value)}
+                  onChange={(e) => setDesiredDpi(Number(e.target.value) || 300)}
                   inputMode="numeric"
-                  style={{ width: 90 }}
+                  style={{ width: 100 }}
                 />
               </div>
-
               <div className="label">Required pixels</div>
-              <div>{requiredWidthPx} × {requiredHeightPx} px</div>
-
-              <div className="label">Your image</div>
-              <div>{metadata?.width || '—'} × {metadata?.height || '—'} px</div>
-
-              <div className="label">Result</div>
-              <div>
-                {pass == null ? '—' : pass ? (
-                  <span style={{ color: 'green', fontWeight: 600 }}>OK for print</span>
-                ) : (
-                  <span style={{ color: 'crimson', fontWeight: 600 }}>Too small for desired size</span>
-                )}
+              <div>{requiredWidthPx} × {requiredHeightPx}</div>
+              <div className="label">Status</div>
+              <div style={{ fontWeight: 600, color: pass === true ? 'green' : pass === false ? 'crimson' : '#888' }}>
+                {pass === true ? '✓ Pass' : pass === false ? '✗ Fail' : '—'}
               </div>
-
-              {metadata?.width && metadata?.height && (
-                <>
-                  <div className="label">Size @ {desiredDpi} DPI</div>
-                  <div>
-                    { (metadata.width / desiredDpi).toFixed(2) } in × { (metadata.height / desiredDpi).toFixed(2) } in
-                    {' '}({ ((metadata.width / desiredDpi) * 2.54).toFixed(1) } cm × { ((metadata.height / desiredDpi) * 2.54).toFixed(1) } cm)
-                  </div>
-                </>
-              )}
             </div>
-
-            <h3 style={{ marginTop: 24 }}>Save Metadata</h3>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '12px', backgroundColor: '#f0f8ff', borderRadius: 6, marginBottom: 16 }}>
-              <button disabled={!file || savingMetadata} onClick={saveMetadataOnly} style={{ padding: '8px 16px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: 6, cursor: savingMetadata ? 'not-allowed' : 'pointer', opacity: !file || savingMetadata ? 0.6 : 1, fontWeight: 600 }}>
-                {savingMetadata ? 'Saving...' : '💾 Save Metadata Only'}
-              </button>
-              <span style={{ fontSize: 13, color: '#555' }}>Download without DPI/size changes</span>
-            </div>
+            <button
+              disabled={!file || savingMetadata}
+              onClick={saveMetadataOnly}
+              style={{ marginTop: 16 }}
+            >
+              {savingMetadata ? 'Saving...' : 'Save metadata changes'}
+            </button>
           </div>
         </div>
       )}
@@ -326,18 +349,23 @@ export default function ImageInspector() {
   );
 }
 
-async function submitForm(url, { file, dpi, widthCm, heightCm, extras = {} }) {
+async function submitForm(url, { file, dpi, widthCm, heightCm, extras }) {
   const form = new FormData();
   form.append('file', file);
   form.append('dpi', String(dpi));
   form.append('widthCm', String(widthCm));
   form.append('heightCm', String(heightCm));
-  Object.entries(extras).forEach(([k, v]) => form.append(k, String(v)));
+  if (extras) {
+    if (extras.resample != null) form.append('resample', String(extras.resample));
+    if (extras.center != null) form.append('center', String(extras.center));
+    if (extras.exifMake) form.append('exifMake', extras.exifMake);
+    if (extras.exifModel) form.append('exifModel', extras.exifModel);
+    if (extras.exifSoftware) form.append('exifSoftware', extras.exifSoftware);
+    if (extras.exifLat) form.append('exifLat', extras.exifLat);
+    if (extras.exifLon) form.append('exifLon', extras.exifLon);
+  }
   const res = await fetch(url, { method: 'POST', body: form });
-  if (!res.ok) throw new Error('Export failed');
-  const blob = await res.blob();
-  return blob;
+  if (!res.ok) throw new Error('Request failed');
+  return res.blob();
 }
-
-
 
