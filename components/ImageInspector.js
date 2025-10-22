@@ -14,6 +14,12 @@ export default function ImageInspector() {
   const [desiredWidthCm, setDesiredWidthCm] = useState('20');
   const [desiredHeightCm, setDesiredHeightCm] = useState('30');
   const [exporting, setExporting] = useState(false);
+  const [exifMake, setExifMake] = useState('');
+  const [exifModel, setExifModel] = useState('');
+  const [exifSoftware, setExifSoftware] = useState('');
+  const [exifLat, setExifLat] = useState('');
+  const [exifLon, setExifLon] = useState('');
+  const [savingMetadata, setSavingMetadata] = useState(false);
 
   const onDrop = useCallback((e) => {
     e.preventDefault();
@@ -36,6 +42,11 @@ export default function ImageInspector() {
     try {
       const m = await extractMetadata(f);
       setMetadata(m);
+      setExifMake(m.make || '');
+      setExifModel(m.model || '');
+      setExifSoftware(m.software || '');
+      setExifLat(m.gpsLatitude != null ? String(m.gpsLatitude) : '');
+      setExifLon(m.gpsLongitude != null ? String(m.gpsLongitude) : '');
     } catch (err) {
       setError('Failed to read image metadata');
       // eslint-disable-next-line no-console
@@ -71,7 +82,7 @@ export default function ImageInspector() {
         dpi: desiredDpi,
         widthCm: desiredWidthCm,
         heightCm: desiredHeightCm,
-        extras: { resample }
+        extras: { resample, exifMake, exifModel, exifSoftware, exifLat, exifLon }
       });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -111,6 +122,34 @@ export default function ImageInspector() {
       setError('PDF export failed');
     } finally {
       setExporting(false);
+    }
+  };
+
+  const saveMetadataOnly = async () => {
+    if (!file) return;
+    setSavingMetadata(true);
+    try {
+      const ext = metadata?.format?.toLowerCase() || 'jpg';
+      const endpoint = ext === 'jpeg' || ext === 'jpg' ? '/api/export/jpeg' : '/api/export/jpeg';
+      const blob = await submitForm(endpoint, {
+        file,
+        dpi: metadata?.dpiX || 300,
+        widthCm: '0',
+        heightCm: '0',
+        extras: { resample: false, exifMake, exifModel, exifSoftware, exifLat, exifLon }
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = (file?.name || 'image').replace(/.[^.]+$/, '') + '_metadata.jpg';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError('Metadata save failed');
+    } finally {
+      setSavingMetadata(false);
     }
   };
 
@@ -172,7 +211,50 @@ export default function ImageInspector() {
                 <div className="label">DPI (X × Y)</div>
                 <div>{metadata.dpiX || '—'} {metadata.dpiX && metadata.dpiY ? '×' : ''} {metadata.dpiY || ''}</div>
                 <div className="label">DPI source</div><div>{metadata.dpiSource || '—'}</div>
+                <div className="label">EXIF present</div><div>{metadata.exifPresent === true ? 'Yes' : metadata.exifPresent === false ? 'No' : 'Unknown'}</div>
+                <div className="label">GPS present</div><div>{metadata.gpsPresent ? 'Yes' : 'No'}</div>
+                {metadata.format && (
+                  <>
+                    <div className="label">Make</div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <select value={exifMake} onChange={(e) => setExifMake(e.target.value)} style={{ flex: 1, padding: '8px 10px', border: '1px solid #ccc', borderRadius: 6 }}>
+                        <option value="">-- Select Brand --</option>
+                        <option value="Apple">Apple</option>
+                        <option value="Canon">Canon</option>
+                        <option value="Nikon">Nikon</option>
+                        <option value="Sony">Sony</option>
+                        <option value="Samsung">Samsung</option>
+                        <option value="Google">Google (Pixel)</option>
+                        <option value="Fujifilm">Fujifilm</option>
+                        <option value="Panasonic">Panasonic</option>
+                      </select>
+                      <input value={exifMake} onChange={(e) => setExifMake(e.target.value)} placeholder="or custom" style={{ flex: 1 }} />
+                    </div>
+                    <div className="label">Model</div>
+                    <div><input value={exifModel} onChange={(e) => setExifModel(e.target.value)} placeholder={metadata.model || 'Camera model'} style={{ width: '100%' }} /></div>
+                    <div className="label">Software</div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <select value={exifSoftware} onChange={(e) => setExifSoftware(e.target.value)} style={{ flex: 1, padding: '8px 10px', border: '1px solid #ccc', borderRadius: 6 }}>
+                        <option value="">-- Select Software --</option>
+                        <option value="Adobe Lightroom">Adobe Lightroom</option>
+                        <option value="Photoshop">Photoshop</option>
+                        <option value="GIMP">GIMP</option>
+                        <option value="Capture One">Capture One</option>
+                        <option value="Affinity Photo">Affinity Photo</option>
+                        <option value="Darktable">Darktable</option>
+                      </select>
+                      <input value={exifSoftware} onChange={(e) => setExifSoftware(e.target.value)} placeholder="or custom" style={{ flex: 1 }} />
+                    </div>
+                    <div className="label">GPS latitude</div>
+                    <div><input value={exifLat} onChange={(e) => setExifLat(e.target.value)} inputMode="decimal" placeholder={metadata.gpsLatitude != null ? String(metadata.gpsLatitude) : 'e.g. 59.3293'} style={{ width: 180 }} /></div>
+                    <div className="label">GPS longitude</div>
+                    <div><input value={exifLon} onChange={(e) => setExifLon(e.target.value)} inputMode="decimal" placeholder={metadata.gpsLongitude != null ? String(metadata.gpsLongitude) : 'e.g. 18.0686'} style={{ width: 180 }} /></div>
+                  </>
+                )}
               </div>
+            )}
+            {!metadata && (
+              <p style={{ color: '#888', fontStyle: 'italic' }}>No metadata found for this image.</p>
             )}
 
             <h3 style={{ marginTop: 24 }}>Print check</h3>
@@ -228,6 +310,14 @@ export default function ImageInspector() {
                   </div>
                 </>
               )}
+            </div>
+
+            <h3 style={{ marginTop: 24 }}>Save Metadata</h3>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '12px', backgroundColor: '#f0f8ff', borderRadius: 6, marginBottom: 16 }}>
+              <button disabled={!file || savingMetadata} onClick={saveMetadataOnly} style={{ padding: '8px 16px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: 6, cursor: savingMetadata ? 'not-allowed' : 'pointer', opacity: !file || savingMetadata ? 0.6 : 1, fontWeight: 600 }}>
+                {savingMetadata ? 'Saving...' : '💾 Save Metadata Only'}
+              </button>
+              <span style={{ fontSize: 13, color: '#555' }}>Download without DPI/size changes</span>
             </div>
           </div>
         </div>

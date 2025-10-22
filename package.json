@@ -13,7 +13,9 @@
     "react": "latest",
     "react-dom": "latest",
     "pdf-lib": "^1.17.1",
-    "sharp": "^0.33.5"
+    "sharp": "^0.33.5",
+    "piexifjs": "^1.0.6",
+    "exifr": "^7.1.3"
   }
 }
 
