@@ -19,6 +19,28 @@ export async function POST(request) {
     const array = await file.arrayBuffer();
     const inputBuffer = Buffer.from(array);
 
+    // SOLUTION: Extract original EXIF data before processing
+    let originalExif = null;
+    try {
+      const exifr = (await import('exifr')).default;
+      originalExif = await exifr.parse(inputBuffer, { 
+        tiff: true, 
+        ifd0: true, 
+        exif: true, 
+        gps: true 
+      });
+      if (originalExif) {
+        console.log('Original EXIF found:', {
+          make: originalExif.Make,
+          model: originalExif.Model,
+          software: originalExif.Software,
+          gps: originalExif.latitude ? `${originalExif.latitude}, ${originalExif.longitude}` : 'none'
+        });
+      }
+    } catch (e) {
+      console.warn('Could not extract original EXIF:', e);
+    }
+
     let image = sharp(inputBuffer, { failOn: 'none' });
 
     if (resample && widthCm > 0 && heightCm > 0) {
@@ -27,26 +49,33 @@ export async function POST(request) {
       image = image.resize({ width: widthPx, height: heightPx, fit: 'fill' });
     }
 
-    let output = await image.jpeg({ quality: 100 }).withMetadata({ density: dpi }).toBuffer();
+    // SOLUTION: Use withMetadata() without parameters to preserve all metadata
+    // Then we'll inject EXIF separately using piexifjs
+    let output = await image.jpeg({ quality: 100 }).withMetadata().toBuffer();
 
-    // Optionally set EXIF Software/Make/Model or GPS if provided in form
+    // Get user-provided EXIF updates from form
     const exifMake = form.get('exifMake');
     const exifModel = form.get('exifModel');
     const exifSoftware = form.get('exifSoftware');
     const exifLat = form.get('exifLat');
     const exifLon = form.get('exifLon');
 
-    const hasExifUpdates = !!(exifMake || exifModel || exifSoftware || exifLat || exifLon);
+    // SOLUTION: Merge original EXIF with user-provided updates
+    const hasExifUpdates = !!(exifMake || exifModel || exifSoftware || exifLat || exifLon || originalExif);
     if (hasExifUpdates) {
       try {
         const updated = injectExif(output, {
-          make: exifMake ? String(exifMake) : undefined,
-          model: exifModel ? String(exifModel) : undefined,
-          software: exifSoftware ? String(exifSoftware) : undefined,
-          lat: exifLat != null && exifLat !== '' ? Number(exifLat) : undefined,
-          lon: exifLon != null && exifLon !== '' ? Number(exifLon) : undefined
+          // User-provided values take precedence, fall back to original EXIF
+          make: exifMake ? String(exifMake) : (originalExif?.Make ? String(originalExif.Make) : undefined),
+          model: exifModel ? String(exifModel) : (originalExif?.Model ? String(originalExif.Model) : undefined),
+          software: exifSoftware ? String(exifSoftware) : (originalExif?.Software ? String(originalExif.Software) : undefined),
+          lat: exifLat != null && exifLat !== '' ? Number(exifLat) : (originalExif?.latitude || undefined),
+          lon: exifLon != null && exifLon !== '' ? Number(exifLon) : (originalExif?.longitude || undefined)
         });
-        if (updated) output = updated;
+        if (updated) {
+          output = updated;
+          console.log('EXIF data injected successfully');
+        }
       } catch (e) {
         console.error('Failed to inject EXIF:', e);
       }
@@ -60,6 +89,7 @@ export async function POST(request) {
       }
     });
   } catch (e) {
+    console.error('Export error:', e);
     return new Response(JSON.stringify({ error: 'Failed to export JPEG' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
 }
@@ -111,7 +141,23 @@ function degToDmsRationalLon(deg) {
 function injectExif(jpegBuffer, { make, model, software, lat, lon }) {
   try {
     let dataUrl = toDataUrlFromBuffer(jpegBuffer);
-    const exifObj = { '0th': {}, 'GPS': {} };
+    
+    // SOLUTION: Try to load existing EXIF first, then merge
+    let exifObj = { '0th': {}, 'GPS': {} };
+    try {
+      const existingExif = piexif.load(dataUrl);
+      if (existingExif && existingExif['0th']) {
+        exifObj['0th'] = { ...existingExif['0th'] };
+      }
+      if (existingExif && existingExif['GPS']) {
+        exifObj['GPS'] = { ...existingExif['GPS'] };
+      }
+    } catch (e) {
+      // No existing EXIF, start fresh
+      console.log('No existing EXIF to preserve, creating new');
+    }
+    
+    // Update with new values (only if provided)
     if (make) exifObj['0th'][piexif.ImageIFD.Make] = make;
     if (model) exifObj['0th'][piexif.ImageIFD.Model] = model;
     if (software) exifObj['0th'][piexif.ImageIFD.Software] = software;
@@ -125,13 +171,13 @@ function injectExif(jpegBuffer, { make, model, software, lat, lon }) {
       exifObj['GPS'][piexif.GPSIFD.GPSLongitudeRef] = dmsL.ref;
       exifObj['GPS'][piexif.GPSIFD.GPSLongitude] = [dmsL.d, dmsL.m, dmsL.s];
     }
+    
     const exifBytes = piexif.dump(exifObj);
     const newDataUrl = piexif.insert(exifBytes, dataUrl);
     return fromDataUrlToBuffer(newDataUrl);
   } catch (e) {
+    console.error('EXIF injection error:', e);
     return null;
   }
 }
-
-
 
